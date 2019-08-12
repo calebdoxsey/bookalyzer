@@ -1,0 +1,103 @@
+{{define "layout"}}
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <title>Bookalyzer</title>
+        <link rel="stylesheet" href="/assets/milligram.css" type="text/css"/>
+        <style>
+            .main .container, .main .header {
+                max-width: 80rem
+            }
+        </style>
+    </head>
+    <body>
+
+    <div class="main">
+        <header class="container header">
+            <h1><a href="/">Bookalyzer</a></h1>
+        </header>
+        {{ .Content }}
+    </div>
+
+    </body>
+    </html>
+{{end}}
+
+{{define "index"}}
+    <section class="container">
+        <h2>Books</h2>
+        {{if .Books}}
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Language</th>
+                </tr>
+                </thead>
+                <tbody>
+                {{range .Books}}
+                    <tr>
+                        <td><a href="/books/{{.Id}}">{{.Id}}</a></td>
+                        <td>{{.Title}}</td>
+                        <td>{{.Author}}</td>
+                        <td>{{.Language}}</td>
+                    </tr>
+                {{end}}
+                </tbody>
+            </table>
+        {{else}}
+            <em>No Books Found</em>
+        {{end}}
+    </section>
+
+    <section class="container">
+        <h3>Add New Book</h3>
+        <form method="POST" action="/books" enctype="application/x-www-form-urlencoded">
+            <div>
+                <label for="url">URL</label>
+                <input type="text" class="form-control" id="url" name="url" placeholder="Book URL">
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </section>
+{{end}}
+
+{{define "view-book"}}
+    <section class="container">
+        <dl>
+            <dt>ID</dt>
+            <dd>{{.Book.Id}}</dd>
+
+            <dt>URL</dt>
+            <dd><a href="{{.Book.Url}}">{{.Book.Url}}</a></dd>
+
+            <dt>Title</dt>
+            <dd>{{.Book.Title}}</dd>
+
+            <dt>Author</dt>
+            <dd>{{.Book.Author}}</dd>
+
+            <dt>Language</dt>
+            <dd>{{.Book.Language}}</dd>
+
+            <dt>Job Status</dt>
+            <dd>
+                {{range .JobStatus}}
+                    {{.}}<br/>
+                {{end}}
+            </dd>
+        </dl>
+        {{if .Stats}}
+            <h3>Stats</h3>
+            <dl>
+                <dt>Number of Words</dt>
+                <dd>{{.Stats.NumberOfWords}}</dd>
+
+                <dt>Longest Word</dt>
+                <dd>{{.Stats.LongestWord}}</dd>
+            </dl>
+        {{end}}
+    </section>
+{{end}}

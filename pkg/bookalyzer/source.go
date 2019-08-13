@@ -2,7 +2,10 @@ package bookalyzer
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
@@ -21,7 +24,7 @@ type BookDetails struct {
 
 // A Source is an a source for book downloads.
 type Source interface {
-	Download() (*BookDetails, error)
+	Download(ctx context.Context) (*BookDetails, error)
 	BookURL() string
 	FilePath() string
 }
@@ -68,8 +71,16 @@ func (gs *GutenbergSource) FilePath() string {
 }
 
 // Download downloads the book.
-func (gs *GutenbergSource) Download() (*BookDetails, error) {
-	res, err := http.Get(gs.BookURL())
+func (gs *GutenbergSource) Download(ctx context.Context) (*BookDetails, error) {
+	req, err := http.NewRequest("GET", gs.BookURL(), nil)
+	if err != nil {
+		return nil, xerrors.Errorf("error generating download request: %w", err)
+	}
+	req = req.WithContext(ctx)
+	req, ht := nethttp.TraceRequest(opentracing.GlobalTracer(), req)
+	defer ht.Finish()
+
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, xerrors.Errorf("error downloading book: %w", err)
 	}

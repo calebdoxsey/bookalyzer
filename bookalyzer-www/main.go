@@ -31,7 +31,7 @@ func main() {
 
 	deps.RegisterTracer("bookalyzer-www")
 
-	cc := deps.DialGRPC(ctx, "localhost:5100")
+	cc := deps.GRPCClient(ctx, "localhost:5100")
 	srv := &server{
 		client: pb.NewBookBackendClient(cc),
 	}

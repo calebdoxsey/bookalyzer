@@ -30,7 +30,7 @@ function run-cockroach() {
     --execute "
 CREATE TABLE IF NOT EXISTS book (
   id BIGSERIAL,
-  url TEXT NOT NULL DEFAULT ''
+  url TEXT NOT NULL DEFAULT '' UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS book_job_status (
@@ -52,12 +52,6 @@ CREATE TABLE IF NOT EXISTS book_stat (
   book_id BIGINT NOT NULL UNIQUE,
   number_of_words INT NOT NULL,
   longest_word TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS book_review (
-  book_id BIGINT NOT NULL,
-  username TEXT NOT NULL,
-  review TEXT NOT NULL
 );
 " \
     --host=localhost:26257 \

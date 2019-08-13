@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/calebdoxsey/bookalyzer/pb"
 	"github.com/calebdoxsey/bookalyzer/pkg/deps"
+	"github.com/calebdoxsey/bookalyzer/pkg/goodreads"
 	"github.com/calebdoxsey/bookalyzer/pkg/jobs"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
@@ -24,12 +26,13 @@ func main() {
 	defer cancel()
 
 	deps.RegisterTracer("bookalyzer-worker")
-	c := deps.DialJobConsumer(ctx)
+	c := deps.JobConsumer(ctx)
 
 	w := &worker{
-		db: deps.DialCockroach(ctx),
-		s3: deps.S3(),
-		p:  deps.DialJobProducer(ctx),
+		db:        deps.Cockroach(ctx),
+		s3:        deps.S3(),
+		p:         deps.JobProducer(ctx),
+		goodreads: deps.Goodreads(),
 	}
 
 	_, _ = w.s3.CreateBucket(&s3.CreateBucketInput{
@@ -58,15 +61,19 @@ func main() {
 }
 
 type worker struct {
-	db *sql.DB
-	s3 s3iface.S3API
-	p  *jobs.Producer
+	db        *sql.DB
+	s3        s3iface.S3API
+	p         *jobs.Producer
+	goodreads *goodreads.API
 }
 
 func (w *worker) handle(ctx context.Context, job *pb.Job) error {
-	span := opentracing.StartSpan("job")
+	span := opentracing.StartSpan(fmt.Sprintf("job-%s", job.Type))
 	defer span.Finish()
 	ext.SpanKindConsumer.Set(span)
+
+	span.SetTag("book.id", job.Book.Id)
+	span.SetTag("book.url", job.Book.Url)
 
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
@@ -77,8 +84,6 @@ func (w *worker) handle(ctx context.Context, job *pb.Job) error {
 		err = w.download(ctx, job.Book)
 	case pb.Job_CALCULATE_STATS:
 		err = w.calculateStats(ctx, job.Book)
-	case pb.Job_GET_REVIEWS:
-		err = w.getReviews(job.Book)
 	default:
 		err = xerrors.New("unknown job type")
 	}
@@ -87,17 +92,13 @@ func (w *worker) handle(ctx context.Context, job *pb.Job) error {
 	if err != nil {
 		status = err.Error()
 		ext.Error.Set(span, true)
-		span.SetTag("error_message", err.Error())
+		span.SetTag("error.message", err.Error())
 	}
-	if _, dberr := w.db.ExecContext(context.TODO(), `
+	if _, dberr := w.db.ExecContext(ctx, `
 UPSERT INTO book_job_status (book_id, job_type, status) VALUES ($1, $2, $3)
 `, job.Book.Id, job.Type.String(), status); dberr != nil {
 		log.Warn().Err(dberr).Msg("failed to update job status")
 	}
 
 	return err
-}
-
-func (w *worker) getReviews(book *pb.Book) error {
-	return xerrors.New("not implemented")
 }

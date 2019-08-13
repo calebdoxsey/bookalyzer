@@ -23,8 +23,7 @@ message GetBookRequest {
 message GetBookResponse {
     Book book = 1;
     BookStats stats = 2;
-    repeated BookReview reviews = 3;
-    repeated string job_status = 4;
+    repeated string job_status = 3;
 }
 
 message ListBooksRequest {
@@ -48,17 +47,11 @@ message BookStats {
     string longest_word = 2;
 }
 
-message BookReview {
-    string username = 1;
-    string review = 2;
-}
-
 message Job {
     map<string, string> metadata = 1;
     enum Type {
         DOWNLOAD = 0;
         CALCULATE_STATS = 1;
-        GET_REVIEWS = 2;
     }
     Type type = 2;
     Book book = 3;

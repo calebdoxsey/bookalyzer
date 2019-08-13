@@ -73,29 +73,6 @@ SELECT number_of_words, longest_word FROM book_stat WHERE book_id = $1
 
 	{
 		rows, err := s.db.QueryContext(ctx, `
-SELECT username, review FROM book_review WHERE book_id = $1
-`, res.Book.Id)
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, "error getting book reviews: %v", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var review pb.BookReview
-			err := rows.Scan(&review.Username, &review.Review)
-			if err != nil {
-				return nil, status.Errorf(codes.Unknown, "error listing books: %v", err)
-			}
-			res.Reviews = append(res.Reviews, &review)
-		}
-		err = rows.Err()
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, "error listing books: %v", err)
-		}
-	}
-
-	{
-		rows, err := s.db.QueryContext(ctx, `
 SELECT job_type, status FROM book_job_status WHERE book_id = $1
 `, res.Book.Id)
 		if err != nil {
@@ -156,8 +133,8 @@ func main() {
 	defer cancel()
 
 	deps.RegisterTracer("bookalyzer-backend")
-	db := deps.DialCockroach(ctx)
-	p := deps.DialJobProducer(ctx)
+	db := deps.Cockroach(ctx)
+	p := deps.JobProducer(ctx)
 
 	addr := "127.0.0.1:5100"
 	log.Info().Msgf("starting bookalyzer-backend on: %s", addr)
@@ -167,7 +144,7 @@ func main() {
 	}
 	defer li.Close()
 
-	srv := deps.NewGRPCServer()
+	srv := deps.GRPCServer()
 	pb.RegisterBookBackendServer(srv, &server{
 		p:  p,
 		db: db,
